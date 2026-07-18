@@ -5,7 +5,7 @@ export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
   const [loading, setLoading] = useState(false);
-  const recaptchaRef = useRef<ReCAPTCHA>(null); // 2. Create a ref
+  const recaptchaRef = useRef<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
