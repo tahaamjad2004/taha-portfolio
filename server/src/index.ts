@@ -6,6 +6,10 @@ import contactRoutes from "./routes/contact.js";
 import authRoutes from "./routes/auth.js";
 import adminRoutes from "./routes/admin.js";
 
+// Diagnostic: Check if the key is loaded
+console.log("--- DEBUG ---");
+console.log("RECAPTCHA_SECRET_KEY is loaded:", !!process.env.RECAPTCHA_SECRET_KEY);
+console.log("-------------");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -43,6 +47,15 @@ app.use(
   },
 );
 
+
+
+// Add this in index.ts before app.listen
+try {
+  await prisma.$connect();
+  console.log("Database connected successfully!");
+} catch (e) {
+  console.error("Database connection failed:", e);
+}
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

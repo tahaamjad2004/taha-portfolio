@@ -2,35 +2,41 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { sendContactAlert } from "../lib/resend.js";
 import { contactSchema } from "../lib/validators.js";
-import { verifyRecaptcha } from "../lib/recaptcha.js"; // 1. Import the function
+import { verifyRecaptcha } from "../lib/recaptcha.js";
 
 const router = Router();
 
 router.post("/", async (req, res) => {
   try {
+    // 1. Validate the incoming request body
     const parsed = contactSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({
+      console.error("Zod Validation Error:", parsed.error.flatten().fieldErrors);
+      return res.status(400).json({
         error: "Validation failed",
         details: parsed.error.flatten().fieldErrors,
       });
-      return;
     }
 
-    // 2. Add ReCAPTCHA verification
-    const { token } = req.body;
+    // 2. Destructure to separate the token from the actual contact data
+    // parsed.data now contains { name, email, phoneSubject, message, token }
+    const { token, ...contactData } = parsed.data;
+
+    // 3. Verify ReCAPTCHA
     const recaptchaResult = await verifyRecaptcha(token);
     if (!recaptchaResult.success) {
-      res.status(400).json({ error: recaptchaResult.error || "Spam detection failed" });
-      return;
+      console.error("reCAPTCHA check failed:", recaptchaResult.error);
+      return res.status(400).json({ error: recaptchaResult.error || "Spam detection failed" });
     }
 
+    // 4. Save to database using only the cleaned contactData (without the token)
     const contact = await prisma.contact.create({
-      data: parsed.data,
+      data: contactData,
     });
 
+    // 5. Send notification email
     try {
-      await sendContactAlert(parsed.data);
+      await sendContactAlert(contactData);
     } catch (emailError) {
       console.error("Failed to send contact alert email:", emailError);
     }

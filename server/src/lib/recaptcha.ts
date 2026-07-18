@@ -1,5 +1,4 @@
 const RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify";
-const MIN_SCORE = 0.5;
 
 function isRecaptchaConfigured() {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
@@ -8,39 +7,32 @@ function isRecaptchaConfigured() {
 
 export async function verifyRecaptcha(token: string, remoteIp?: string) {
   if (!isRecaptchaConfigured()) {
-    if (process.env.NODE_ENV === "production") {
-      return { success: false, error: "reCAPTCHA is not configured" };
-    }
-    return { success: true };
+    return { success: process.env.NODE_ENV !== "production" };
   }
 
-  const params = new URLSearchParams({
-    secret: process.env.RECAPTCHA_SECRET_KEY!,
-    response: token,
-  });
-
-  if (remoteIp) {
-    params.set("remoteip", remoteIp);
-  }
+  const params = new URLSearchParams();
+  params.append("secret", process.env.RECAPTCHA_SECRET_KEY!);
+  params.append("response", token);
+  if (remoteIp) params.append("remoteip", remoteIp);
 
   const response = await fetch(RECAPTCHA_VERIFY_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
     body: params.toString(),
   });
 
-  const data = (await response.json()) as {
-    success: boolean;
-    score?: number;
-    "error-codes"?: string[];
+  // Explicitly define the type to fix the red squiggly line
+  const data = (await response.json()) as { 
+    success: boolean; 
+    "error-codes"?: string[] 
   };
 
   if (!data.success) {
+    // This will print the error in your terminal to tell us why it failed
+    console.error("reCAPTCHA Google API Error Response:", data);
     return { success: false, error: "reCAPTCHA verification failed" };
-  }
-
-  if (typeof data.score === "number" && data.score < MIN_SCORE) {
-    return { success: false, error: "reCAPTCHA score too low" };
   }
 
   return { success: true };
