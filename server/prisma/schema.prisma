@@ -1,0 +1,64 @@
+// Prisma schema for Taha.dev portfolio — Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Admin and authenticated users synced from Supabase Auth
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  authUserId String   @unique @map("auth_user_id") @db.Uuid
+  name       String
+  email      String   @unique
+  role       UserRole @default(USER)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+/// Contact form submissions from the portfolio site
+model Contact {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  email        String
+  phoneSubject String        @map("phone_subject")
+  message      String
+  status       ContactStatus @default(PENDING)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("contacts")
+}
+
+/// IP-based login attempt tracking for admin rate limiting
+model LoginAttempt {
+  id            String    @id @default(uuid()) @db.Uuid
+  ipAddress     String    @unique @map("ip_address")
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime  @default(now()) @map("last_attempt_at") @db.Timestamptz(6)
+  blockedUntil  DateTime? @map("blocked_until") @db.Timestamptz(6)
+
+  @@map("login_attempts")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_role")
+}
+
+enum ContactStatus {
+  PENDING
+  DONE
+  COMPLETED
+  RESOLVED
+
+  @@map("contact_status")
+}
